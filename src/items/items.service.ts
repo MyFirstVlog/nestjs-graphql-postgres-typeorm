@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateItemInput, UpdateItemInput } from './dto/inputs';
@@ -21,19 +21,36 @@ export class ItemsService {
     //* Save tambein devuelve la instancia que se graba en base de datos
   }
 
-  findAll() {
-    return [];
+  findAll(): Promise<Item[]> {
+    return this.itemsRepositorty.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} item`;
+  async findOne(id: string): Promise<Item> {
+
+    const item = await this.itemsRepositorty.findOneBy({id});
+
+    if(!item) throw new NotFoundException(`The item with id ${id} not found`);
+
+    return item;
   }
 
-  update(id: number, updateItemInput: UpdateItemInput) {
-    return `This action updates a #${id} item`;
+  async update(id: string, updateItemInput: UpdateItemInput): Promise<Item> {
+
+    const item = await this.itemsRepositorty.preload(updateItemInput); //* Prerecarga la informacion y libera la instancia con las modificaciones ya realizadas dentro del objeto
+    //* Se manda el objeto porque el preload pro defecto trata de encontrar el valor del id
+
+    if(!item) throw new NotFoundException(`The item with id ${id} not found`);
+
+    return this.itemsRepositorty.save(item);
+
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} item`;
+  async remove(id: string):Promise<Item> {
+
+    const item = await this.findOne(id);
+
+    await this.itemsRepositorty.remove(item);
+
+    return {...item, id};
   }
 }
